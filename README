@@ -1,0 +1,4 @@
+This includes code which I think is missing in Std:
+- Exception iterators (because they are most simple and faster)
+  (see tiny.EIter)
+- ...
