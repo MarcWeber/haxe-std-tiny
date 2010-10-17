@@ -45,9 +45,7 @@ class EIterExt{
   static public function filter<T>( next:EIter<T>, p: T -> Bool ):EIter<T>{
     return function(){
       var e=next();
-      while (!p(e)){
-        var e=next();
-      }
+      while (!p(e)) e=next();
       return e;
     }
   }
@@ -111,8 +109,7 @@ class EIterExt{
     }();
   }
   
-  // name length is dropped by js ??!!
-  static public function length_<T>(next:EIter<T>):Int{
+  static public function count<T>(next:EIter<T>):Int{
     var c = 0;
     try{
       while (true){ next(); c++; }
@@ -124,6 +121,24 @@ class EIterExt{
 
   static public function reverse<T>(next:EIter<T>):EIter<T>{
     return EIterExt.toArray(next).toEIter( -1, 0, -1);
+  }
+
+  // get all elements and store them in an array. Then return a new iterator
+  static public function strict<T>(next:EIter<T>):EIter<T>{
+    return EIterExt.toArray(next).toEIter();
+  }
+
+  static public function fold2<T>(next:EIter<T>, f:T -> T -> T, ?ifempty:T):T {
+    try{
+      var first = next();
+      return EIterExt.fold(next, f, first);
+    }catch(e:EndOfIterator){
+      return ifempty;
+    }
+  }
+  
+  public static function mkString(next: EIter<String>, ?prefix: String = '(', ?suffix: String = ')', ?sep = ', '):String {
+    return prefix + fold2(next, function(a,b){ return b+sep+a; }, "") + suffix;
   }
 
   // ARRAY interface

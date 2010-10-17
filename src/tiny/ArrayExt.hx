@@ -1,13 +1,10 @@
 package tiny;
-import tiny.EIter;
+import tiny.EIterExt;
 
 class ArrayExt {
 
   // you should not change the array while iterating
-  static public function toEIter<T>(a:Array<T>, ?start:Int, ?stop:Int, ?step:Int):EIter<T>{
-    if (step == null) step = 1;
-    start = (start == null) ? 0 : start;
-    stop = (stop == null) ? -1 : stop;
+  static public function toEIter<T>(a:Array<T>, ?start:Int = 0, ?stop:Int = -1, ?step:Int = 1):EIter<T>{
     if (start < 0) start = a.length + start;
     if (stop < 0) stop = a.length + stop;
       

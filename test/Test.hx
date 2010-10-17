@@ -1,8 +1,8 @@
-import tiny.EIter;
+import tiny.EIterExt;
 import tiny.ArrayExt;
 
 using tiny.ArrayExt;
-using tiny.EIter;
+using tiny.EIterExt;
 
 class Test {
 
@@ -28,6 +28,12 @@ class Test {
     trace("chain");
     trace([1,2,3,1,2,3]);
     trace([a.toEIter(),a.toEIter()].toEIter().chain().toArray());
+
+
+    trace("filter");
+    trace([2]);
+    trace(a.toEIter().filter($1 == 2).toArray());
+    trace(a);
   }    
 
 }
