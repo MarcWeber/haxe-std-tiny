@@ -16,7 +16,9 @@
 
   I think its hard to get same amount of features with less code.
 
-  So I like this implementation a lot
+  The generated code is more verbose due to HaXe's try catch implementation.
+  So maybe putting that try catch into a shared fixes that without loosing too
+  much performance?
 
   Now you may think "abusing Exceptions for this purpose is insane". Well maybe
   you're right. But for all targets except PHP this is working very well.
@@ -24,6 +26,7 @@
   bencharks: http://mawercer.de/~marc/bench and http://mawercer.de/~marc/bench2
 
   So this code is somewhere between genious and insane :)
+
 */
 
 package tiny;
@@ -38,6 +41,14 @@ typedef EIter<T> = Void -> T;
 
 class EIterExt{
 
+  static public function catchEndOfIterator<T>(work: Void -> T, ?else_: Void -> T){
+    return try{
+      work();
+    }catch(e:EndOfIterator){
+      if (else_ != null) else_();
+    }
+  }
+
   static public function map<A,B>(next:EIter<A>, f:A->B): EIter<B> {
     return function(){ return f(next()); };
   } 
@@ -50,12 +61,12 @@ class EIterExt{
     }
   }
 
+  static public function isEmpty<T>(next: EIter<T>):Bool {
+    return EIterExt.catchEndOfIterator(function(){ next(); return true; }, function(){ return false; });
+  }
+
   static public function each<T>(next: EIter<T>, f:T->Void ){
-    try{
-      while (true){ f(next()); }
-    }catch(e:EndOfIterator){
-      // end
-    }
+    EIterExt.catchEndOfIterator(function(){ while (true) f(next()); });
   }
 
   static public function take<T>(next:EIter<T>, n:Int):EIter<T>{
@@ -99,24 +110,15 @@ class EIterExt{
       return function(){
         if (next == null)
           next = nexts();
-        try{
-          return next();
-        }catch(e:EndOfIterator){
-          next = nexts();
-          return next();
-        }
+        return EIterExt.catchEndOfIterator(next, function(){ next = nexts(); return next(); });
       }
     }();
   }
   
   static public function count<T>(next:EIter<T>):Int{
     var c = 0;
-    try{
-      while (true){ next(); c++; }
-      return 0; // never reached
-    }catch(e:EndOfIterator){
-      return c;
-    }
+    EIterExt.each(next, function(e){ c++; });
+    return c;
   }
 
   static public function reverse<T>(next:EIter<T>):EIter<T>{
@@ -129,12 +131,13 @@ class EIterExt{
   }
 
   static public function fold2<T>(next:EIter<T>, f:T -> T -> T, ?ifempty:T):T {
-    try{
-      var first = next();
-      return EIterExt.fold(next, f, first);
-    }catch(e:EndOfIterator){
-      return ifempty;
-    }
+    return EIterExt.catchEndOfIterator(
+      function(){
+        var first = next();
+        return EIterExt.fold(next, f, first);
+      },
+      function(){ return ifempty; }
+    );
   }
   
   public static function mkString(next: EIter<String>, ?prefix: String = '(', ?suffix: String = ')', ?sep = ', '):String {
@@ -174,12 +177,12 @@ class EIterExt{
       var e=null; // each iterator must have its own copy of e
       return {
         hasNext: function(){
-          try{
+          return EIterExt.catchEndOfIterator(
+          function(){
             e = next();
             return true;
-          }catch(e:EndOfIterator){
-            return false;
-          }
+          }, function(){ return false; }
+          );
         },
         next: function(){
           return e;

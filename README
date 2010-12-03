@@ -2,5 +2,9 @@ This includes code which I think is missing in Std:
 - Exception iterators (because they are most simple and faster)
   (see tiny.EIter)
 - ...
+- minimal type cheked HTML templates which quotes vars automatically
+  ( See src/tiny/HTMLTemplate.hx )
+
+goals: Try to keep pieces minimal and independent.
 
 home: github.com/MarcWeber/haxe-std-tiny
