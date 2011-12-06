@@ -1,4 +1,4 @@
-// my minim lambda implementation. Similar to scuts - but working always
+// Idea taken from scuts library: Use Macro to rewrite short lambda functions
 
 package tiny;
 using Lambda;
@@ -8,10 +8,15 @@ import haxe.macro.Expr;
 /*
    Exapmle F.n:
 
-    trace( [1,2].map(tiny.F.n(_ +2)));
-    trace(tiny.F.n(a,b, a+b)(1,2));
+    trace( [1,2].map(tiny.F.n(_ +2)));  // {3, 4} (a list)
+    trace(tiny.F.n(a,b, a+b)(1,2));     // 3
     // _ is special:
-    trace(tiny.F.n(_1+_2)(1,2));
+    trace(tiny.F.n(_1+_2)(1,2));        // 3
+    trace(tiny.F.n(_1+_3)(1,2,3));      // 4
+    trace(tiny.F.n(_ + _3)(-10,1,2,3)); // -7
+
+    // note: If you use _1 and _3 only this is treated as (_1, _2, _3, expr)
+    // but may be treated as (_1, _2, _3, expr) in the future.
 */
 
 class F 
@@ -55,10 +60,12 @@ class F
 
     // if no args has been passed look for _1 _2 or _
     if (exprs.length == 1){
-      var args_2 = new Hash();
+      var args_2 = { no_number: false, max: -1 }
       find_place_holders ([exprs[0]], args_2);
       var names = [];
-      for (k in args_2.keys()) names.push(k);
+      if (args_2.no_number) names.push("_");
+
+      for (k in 1...(args_2.max+1)) names.push("_"+k);
       names.sort(function(s1,s2){ return (s1 == s2) ? 0 : (s1 < s2 ? -1 : 1);});
       for (a in names) args.push(nameToFunArg(a));
     }
@@ -72,22 +79,28 @@ class F
              expr : with_p(EBlock([with_p(EReturn( exprs[exprs.length-1]))])),
              params : [],
           }));
-    // { pos => #pos(./Main.hx:10: characters 21-45), expr => EFunction(null,{ ??? => null, args => [{ ??? => false, ??? => a, ??? => null, ??? => null }], expr => { pos => #pos(./Main.hx:10: characters 32-45), expr => EBlock([{ pos => #pos(./Main.hx:10: characters 34-42), expr => EReturn({ pos => #pos(./Main.hx:10: characters 41-42), expr => EConst(CIdent(a)) }) }]) }, ??? => [] }) }
   }
 
 
 
   // traverse ast finding _[0-9] identifiers
-  static public function find_place_holders (es:Array<Expr>, a:Hash<String>){
+  static public function find_place_holders (es:Array<Expr>, a:{no_number: Bool, max: Int}){
       var ts = function(e){ find_place_holders(e, a); };
       var t = function(e){ find_place_holders([e], a); };
+      var consider = function(s){
+        if (s == "_") a.no_number = true;
+        else if (s.charAt(0) == '_'){
+          var n = Std.parseInt(s.substr(1));
+          if (n > a.max) a.max = n;
+        }
+      };
       for (e in es){
         if (e == null) continue;
         switch (e.expr){
           case EConst( c ):
               switch(c){
-                case CString(s) : if (s.charAt(0) == '_') a.set(s, null);
-                case CIdent(s)  : if (s.charAt(0) == '_') a.set(s, null);
+                case CString(s) : consider(s);
+                case CIdent(s)  : consider(s);
                 default: [];
               }
           case EArray( e1, e2): ts([e1,e2]);
@@ -97,7 +110,7 @@ class F
           case EParenthesis( e ): t(e);
           case EObjectDecl( fields ): for (f in fields) t(f.expr);
           case EArrayDecl( values ): ts(values);
-          case ECall( e, params): ts(params); // TODO stop recursion if function is F.n
+          case ECall( e, params): t(e); ts(params); // TODO stop recursion if function is F.n
           case ENew( t , params ): ts(params);
           case EUnop( op , postFix , e ): t(e);
           case EVars( vars ): for (v in vars) t(v.expr);
