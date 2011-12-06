@@ -5,6 +5,15 @@ using Lambda;
 
 import haxe.macro.Expr;
 
+/*
+   Exapmle F.n:
+
+    trace( [1,2].map(tiny.F.n(_ +2)));
+    trace(tiny.F.n(a,b, a+b)(1,2));
+    // _ is special:
+    trace(tiny.F.n(_1+_2)(1,2));
+*/
+
 class F 
 {
 
@@ -46,10 +55,12 @@ class F
 
     // if no args has been passed look for _1 _2 or _
     if (exprs.length == 1){
-      var args_2 = [];
+      var args_2 = new Hash();
       find_place_holders ([exprs[0]], args_2);
-      for (a in args_2)
-          args.push(nameToFunArg(a));
+      var names = [];
+      for (k in args_2.keys()) names.push(k);
+      names.sort(function(s1,s2){ return (s1 == s2) ? 0 : (s1 < s2 ? -1 : 1);});
+      for (a in names) args.push(nameToFunArg(a));
     }
 
     return with_p(
@@ -67,7 +78,7 @@ class F
 
 
   // traverse ast finding _[0-9] identifiers
-  static public function find_place_holders (es:Array<Expr>, a:Array<String>){
+  static public function find_place_holders (es:Array<Expr>, a:Hash<String>){
       var ts = function(e){ find_place_holders(e, a); };
       var t = function(e){ find_place_holders([e], a); };
       for (e in es){
@@ -75,8 +86,8 @@ class F
         switch (e.expr){
           case EConst( c ):
               switch(c){
-                case CString(s) : if (s.charAt(0) == '_') a.push(s);
-                case CIdent(s)  : if (s.charAt(0) == '_') a.push(s);
+                case CString(s) : if (s.charAt(0) == '_') a.set(s, null);
+                case CIdent(s)  : if (s.charAt(0) == '_') a.set(s, null);
                 default: [];
               }
           case EArray( e1, e2): ts([e1,e2]);
